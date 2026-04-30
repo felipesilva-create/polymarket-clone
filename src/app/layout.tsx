@@ -4,12 +4,13 @@ import "./globals.css";
 import { WalletProvider } from "@/contexts/WalletContext";
 import { ToastProvider } from "@/components/Toast";
 import SessionProvider from "@/providers/SessionProvider";
+import ResolutionListener from "@/components/ResolutionListener";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "PredictHub - Mercado de Previsoes",
-  description: "Plataforma de mercado de previsoes - Negocie em eventos do mundo real",
+  title: "PredictCam - Cameras ao Vivo + Previsoes",
+  description: "Assista cameras ao vivo do mundo inteiro e faca suas previsoes em tempo real",
 };
 
 export default function RootLayout({
@@ -23,6 +24,7 @@ export default function RootLayout({
         <SessionProvider>
           <WalletProvider>
             <ToastProvider>
+              <ResolutionListener />
               {children}
             </ToastProvider>
           </WalletProvider>

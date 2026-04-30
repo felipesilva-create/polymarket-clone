@@ -22,7 +22,11 @@ export default function HistoricoPage() {
 
   const totalBuys = wallet.trades.filter((t) => t.type === "buy").length;
   const totalSells = wallet.trades.filter((t) => t.type === "sell").length;
-  const totalVolume = wallet.trades.reduce((acc, t) => acc + t.total, 0);
+  const totalWins = wallet.trades.filter((t) => t.type === "win").length;
+  const totalLosses = wallet.trades.filter((t) => t.type === "loss").length;
+  const totalVolume = wallet.trades
+    .filter((t) => t.type === "buy" || t.type === "sell")
+    .reduce((acc, t) => acc + t.total, 0);
 
   return (
     <div className="min-h-screen bg-[#0a0a0f]">
@@ -64,9 +68,9 @@ export default function HistoricoPage() {
         )}
 
         {/* Summary */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
           <div className="bg-[#141419] rounded-xl p-5 border border-[#252530]">
-            <p className="text-gray-400 text-sm">Total de Trades</p>
+            <p className="text-gray-400 text-sm">Total</p>
             <p className="text-2xl font-bold text-white">{wallet.trades.length}</p>
           </div>
           <div className="bg-[#141419] rounded-xl p-5 border border-[#252530]">
@@ -74,11 +78,15 @@ export default function HistoricoPage() {
             <p className="text-2xl font-bold text-emerald-400">{totalBuys}</p>
           </div>
           <div className="bg-[#141419] rounded-xl p-5 border border-[#252530]">
-            <p className="text-gray-400 text-sm">Vendas</p>
-            <p className="text-2xl font-bold text-rose-400">{totalSells}</p>
+            <p className="text-gray-400 text-sm">Ganhos</p>
+            <p className="text-2xl font-bold text-emerald-400">{totalWins}</p>
           </div>
           <div className="bg-[#141419] rounded-xl p-5 border border-[#252530]">
-            <p className="text-gray-400 text-sm">Volume Total</p>
+            <p className="text-gray-400 text-sm">Perdas</p>
+            <p className="text-2xl font-bold text-rose-400">{totalLosses}</p>
+          </div>
+          <div className="bg-[#141419] rounded-xl p-5 border border-[#252530] col-span-2 md:col-span-1">
+            <p className="text-gray-400 text-sm">Volume</p>
             <p className="text-2xl font-bold text-white">${totalVolume.toFixed(2)}</p>
           </div>
         </div>
@@ -116,7 +124,20 @@ export default function HistoricoPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#252530]">
-                  {wallet.trades.map((trade) => (
+                  {wallet.trades.map((trade) => {
+                    const typeStyles: Record<string, string> = {
+                      buy: "bg-emerald-500/20 text-emerald-400",
+                      sell: "bg-rose-500/20 text-rose-400",
+                      win: "bg-amber-500/20 text-amber-300 border border-amber-500/30",
+                      loss: "bg-gray-700/40 text-gray-400 border border-gray-600/30",
+                    };
+                    const typeLabels: Record<string, string> = {
+                      buy: "Compra",
+                      sell: "Venda",
+                      win: "🏆 Ganhou",
+                      loss: "❌ Perdeu",
+                    };
+                    return (
                     <tr key={trade.id} className="hover:bg-[#1a1a22]/50">
                       <td className="px-5 py-4 text-gray-300 text-sm">
                         {formatDate(trade.createdAt)}
@@ -124,12 +145,10 @@ export default function HistoricoPage() {
                       <td className="px-5 py-4">
                         <span
                           className={`px-2 py-1 rounded-lg text-xs font-bold uppercase ${
-                            trade.type === "buy"
-                              ? "bg-emerald-500/20 text-emerald-400"
-                              : "bg-rose-500/20 text-rose-400"
+                            typeStyles[trade.type] || "bg-gray-500/20 text-gray-400"
                           }`}
                         >
-                          {trade.type === "buy" ? "Compra" : "Venda"}
+                          {typeLabels[trade.type] || trade.type}
                         </span>
                       </td>
                       <td className="px-5 py-4">
@@ -157,7 +176,9 @@ export default function HistoricoPage() {
                       <td className="px-5 py-4 text-right">
                         <span
                           className={`font-medium ${
-                            trade.type === "buy" ? "text-rose-400" : "text-emerald-400"
+                            trade.type === "buy" || trade.type === "loss"
+                              ? "text-rose-400"
+                              : "text-emerald-400"
                           }`}
                         >
                           {trade.type === "buy" ? "-" : "+"}${trade.total.toFixed(2)}
@@ -173,7 +194,8 @@ export default function HistoricoPage() {
                         )}
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

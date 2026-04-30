@@ -1,7 +1,8 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import { useSession } from "next-auth/react";
+import { resolveClientPositions, ClientResolution } from "@/lib/clientResolver";
 
 export interface Position {
   id?: string;
@@ -12,6 +13,7 @@ export interface Position {
   avgPrice: number;
   currentPrice: number;
   totalInvested: number;
+  createdAt?: string;
 }
 
 export interface Trade {
@@ -19,12 +21,14 @@ export interface Trade {
   marketId: string;
   marketQuestion: string;
   outcome: string;
-  type: "buy" | "sell";
+  type: "buy" | "sell" | "win" | "loss" | string;
   shares: number;
   price: number;
   total: number;
   pnl?: number;
   createdAt: string;
+  resolved?: boolean;
+  won?: boolean;
 }
 
 export interface WalletData {
@@ -37,6 +41,8 @@ export interface WalletData {
   totalLosses: number;
   winRate: number;
 }
+
+export type ResolutionListener = (resolution: ClientResolution) => void;
 
 export interface WalletContextType {
   wallet: WalletData;
@@ -58,10 +64,12 @@ export interface WalletContextType {
   updatePrices: (markets: { id: string; outcomePrices: string[] }[]) => void;
   resetWallet: () => void;
   refreshWallet: () => Promise<void>;
+  onResolution: (listener: ResolutionListener) => () => void;
 }
 
 const INITIAL_BALANCE = 1000;
 const STORAGE_KEY = "polymarket_wallet";
+const RESOLUTION_INTERVAL_MS = 5000; // checa expiracao a cada 5s
 
 const defaultWallet: WalletData = {
   balance: INITIAL_BALANCE,
@@ -81,8 +89,28 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const isAuthenticated = !!session?.user;
   const [wallet, setWallet] = useState<WalletData>(defaultWallet);
   const [isLoaded, setIsLoaded] = useState(false);
+  const resolutionListeners = useRef<Set<ResolutionListener>>(new Set());
 
-  // Buscar dados do banco quando logado
+  const onResolution = useCallback((listener: ResolutionListener) => {
+    resolutionListeners.current.add(listener);
+    return () => {
+      resolutionListeners.current.delete(listener);
+    };
+  }, []);
+
+  const emitResolutions = useCallback((resolutions: ClientResolution[]) => {
+    for (const r of resolutions) {
+      resolutionListeners.current.forEach((l) => {
+        try {
+          l(r);
+        } catch (e) {
+          console.error("Resolution listener error:", e);
+        }
+      });
+    }
+  }, []);
+
+  // Buscar dados do banco quando logado (com auto-resolucao server-side)
   const refreshWallet = useCallback(async () => {
     if (!isAuthenticated) return;
     try {
@@ -105,6 +133,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
             avgPrice: p.avgPrice,
             currentPrice: p.currentPrice,
             totalInvested: p.totalInvested,
+            createdAt: p.createdAt,
           })),
           trades: (data.trades || []).map((t: any) => ({
             id: t.id,
@@ -117,24 +146,29 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
             total: t.total,
             pnl: t.pnl,
             createdAt: t.createdAt,
+            resolved: t.resolved,
+            won: t.won,
           })),
         });
+
+        // Notificar resolucoes que aconteceram no servidor
+        if (data.resolutions && data.resolutions.length > 0) {
+          emitResolutions(data.resolutions);
+        }
       }
     } catch (e) {
       console.error("Error fetching wallet:", e);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, emitResolutions]);
 
   // Carregar dados: banco para logado, localStorage para visitante
   useEffect(() => {
     if (status === "loading") return;
 
     if (isAuthenticated) {
-      // Quando muda para autenticado, resetar e buscar do banco
       setIsLoaded(false);
       refreshWallet().then(() => setIsLoaded(true));
     } else {
-      // Carregar do localStorage para visitantes
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         try {
@@ -162,6 +196,45 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     }
   }, [wallet, isLoaded, isAuthenticated]);
 
+  // Auto-resolver posicoes expiradas (visitantes: client-side; auth: chama servidor)
+  useEffect(() => {
+    if (!isLoaded) return;
+
+    const checkResolution = () => {
+      if (isAuthenticated) {
+        // Server-side resolve via portfolio fetch (que chama resolveExpiredPositions)
+        refreshWallet();
+      } else {
+        // Client-side resolve
+        setWallet((prev) => {
+          if (prev.positions.length === 0) return prev;
+
+          const result = resolveClientPositions(prev.positions, {});
+          if (result.resolutions.length === 0) return prev;
+
+          // Emit notifications
+          emitResolutions(result.resolutions);
+
+          const newWins = result.resolutions.filter((r) => r.won).length;
+          const newLosses = result.resolutions.filter((r) => !r.won).length;
+
+          return {
+            ...prev,
+            balance: prev.balance + result.totalPayout,
+            totalPnL: prev.totalPnL + result.totalPnL,
+            totalWins: prev.totalWins + newWins,
+            totalLosses: prev.totalLosses + newLosses,
+            positions: result.remainingPositions,
+            trades: [...result.newTrades, ...prev.trades],
+          };
+        });
+      }
+    };
+
+    const interval = setInterval(checkResolution, RESOLUTION_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [isLoaded, isAuthenticated, refreshWallet, emitResolutions]);
+
   const buyShares = useCallback(
     async (
       marketId: string,
@@ -181,7 +254,6 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (isAuthenticated) {
-        // Salvar no banco via API
         try {
           const res = await fetch("/api/trade", {
             method: "POST",
@@ -192,7 +264,6 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
           if (!res.ok) {
             return { success: false, message: data.error || "Erro ao comprar" };
           }
-          // Recarregar wallet do banco
           await refreshWallet();
           return { success: true, message: "Compra realizada com sucesso!" };
         } catch (e) {
@@ -214,13 +285,28 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 
             newPositions = prev.positions.map((p) =>
               p.marketId === marketId && p.outcome === outcome
-                ? { ...p, shares: newShares, avgPrice: newAvgPrice, totalInvested: newTotalInvested, currentPrice: price }
+                ? {
+                    ...p,
+                    shares: newShares,
+                    avgPrice: newAvgPrice,
+                    totalInvested: newTotalInvested,
+                    currentPrice: price,
+                  }
                 : p
             );
           } else {
             newPositions = [
               ...prev.positions,
-              { marketId, marketQuestion, outcome, shares, avgPrice: price, currentPrice: price, totalInvested: total },
+              {
+                marketId,
+                marketQuestion,
+                outcome,
+                shares,
+                avgPrice: price,
+                currentPrice: price,
+                totalInvested: total,
+                createdAt: new Date().toISOString(),
+              },
             ];
           }
 
@@ -353,7 +439,8 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         const newPositions = prev.positions.map((pos) => {
           const market = markets.find((m) => m.id === pos.marketId);
           if (market) {
-            const priceIndex = pos.outcome === "Yes" ? 0 : 1;
+            // Encontrar indice do outcome
+            const priceIndex = pos.outcome === "Sim" || pos.outcome === "Yes" ? 0 : 1;
             const newPrice = parseFloat(market.outcomePrices[priceIndex] || "0");
             if (newPrice > 0) return { ...pos, currentPrice: newPrice };
           }
@@ -387,6 +474,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         updatePrices,
         resetWallet,
         refreshWallet,
+        onResolution,
       }}
     >
       {children}

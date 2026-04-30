@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { resolveExpiredPositions } from "@/lib/marketResolver";
+
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
@@ -11,6 +14,9 @@ export async function GET() {
     }
 
     const userId = (session.user as any).id;
+
+    // Resolve mercados expirados antes de retornar o portfolio
+    const resolveResult = await resolveExpiredPositions(userId);
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -39,6 +45,8 @@ export async function GET() {
       user,
       positions,
       trades,
+      resolutions: resolveResult.resolutions,
+      resolvedCount: resolveResult.resolvedCount,
     });
   } catch (error) {
     console.error("Portfolio error:", error);

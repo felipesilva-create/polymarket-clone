@@ -33,11 +33,12 @@ export default function Header({ onSearch }: HeaderProps) {
           {/* Logo */}
           <div className="flex items-center">
             <Link href="/" className="flex-shrink-0 flex items-center gap-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-amber-400 to-orange-600 rounded-lg flex items-center justify-center">
+              <div className="w-8 h-8 bg-gradient-to-br from-red-500 to-orange-600 rounded-lg flex items-center justify-center relative">
                 <span className="text-white font-bold text-lg">P</span>
+                <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse border border-[#0a0a0f]"></span>
               </div>
               <h1 className="text-xl font-bold text-white">
-                Predict<span className="text-amber-500">Hub</span>
+                Predict<span className="text-red-500">Cam</span>
               </h1>
             </Link>
           </div>
@@ -47,7 +48,7 @@ export default function Header({ onSearch }: HeaderProps) {
             <div className="relative">
               <input
                 type="text"
-                placeholder="Buscar mercados..."
+                placeholder="Buscar cameras, cidades..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-[#141419] text-white placeholder-gray-500 rounded-xl px-4 py-2.5 pl-10 border border-[#252530] focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/50 transition-all"

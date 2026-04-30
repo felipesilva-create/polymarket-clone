@@ -32,7 +32,7 @@ export default function StatsBar({ totalMarkets, totalVolume }: StatsBarProps) {
     <div className="bg-[#141419] rounded-2xl p-6 mb-8 border border-[#252530]">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
         <div className="text-center md:text-left">
-          <p className="text-gray-500 text-sm mb-1">Mercados Ativos</p>
+          <p className="text-gray-500 text-sm mb-1">Mercados ao Vivo</p>
           <p className="text-2xl font-bold text-white">{totalMarkets}</p>
         </div>
         <div className="text-center md:text-left">
@@ -42,13 +42,13 @@ export default function StatsBar({ totalMarkets, totalVolume }: StatsBarProps) {
           </p>
         </div>
         <div className="text-center md:text-left">
-          <p className="text-gray-500 text-sm mb-1">Traders Registrados</p>
+          <p className="text-gray-500 text-sm mb-1">Espectadores</p>
           <p className="text-2xl font-bold text-white">
             {stats.totalUsers.toLocaleString()}
           </p>
         </div>
         <div className="text-center md:text-left">
-          <p className="text-gray-500 text-sm mb-1">Trades Hoje</p>
+          <p className="text-gray-500 text-sm mb-1">Apostas Hoje</p>
           <p className="text-2xl font-bold text-white">
             {stats.tradesToday.toLocaleString()}
           </p>

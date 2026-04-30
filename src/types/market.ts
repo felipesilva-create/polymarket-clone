@@ -16,6 +16,15 @@ export interface Market {
   updatedAt: string;
   image?: string;
   icon?: string;
+  // Camera fields
+  cameraId?: string;
+  cameraName?: string;
+  cameraLocation?: string;
+  cameraCountry?: string;
+  youtubeId?: string;
+  youtubeIds?: string[];
+  thumbnail?: string;
+  duration?: string;
 }
 
 export interface MarketResponse {
@@ -25,12 +34,11 @@ export interface MarketResponse {
 
 export type Category =
   | "all"
-  | "politics"
-  | "crypto"
-  | "sports"
-  | "pop-culture"
-  | "business"
-  | "science";
+  | "cidade"
+  | "praia"
+  | "natureza"
+  | "espaco"
+  | "transito";
 
 export interface FilterOptions {
   category: Category;

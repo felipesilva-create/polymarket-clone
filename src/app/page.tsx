@@ -6,6 +6,7 @@ import MarketList from "@/components/MarketList";
 import CategoryFilter from "@/components/CategoryFilter";
 import StatsBar from "@/components/StatsBar";
 import WalletBar from "@/components/WalletBar";
+import CompetitionBanner from "@/components/CompetitionBanner";
 import { Market } from "@/types/market";
 import { getMarkets } from "@/services/polymarket";
 import { useWallet } from "@/contexts/WalletContext";
@@ -29,7 +30,6 @@ export default function Home() {
     setLoading(false);
     setTimeout(() => setIsUpdating(false), 500);
 
-    // Atualizar precos das posicoes com dados reais
     if (data.length > 0) {
       updatePrices(
         data.map((m: Market) => ({
@@ -56,21 +56,21 @@ export default function Home() {
   useEffect(() => {
     let filtered = [...markets];
 
-    // Filter by category
     if (selectedCategory !== "all") {
       filtered = filtered.filter((market) =>
-        market.category?.toLowerCase().includes(selectedCategory.toLowerCase())
+        market.category?.toLowerCase() === selectedCategory.toLowerCase()
       );
     }
 
-    // Filter by search query
     if (searchQuery) {
+      const q = searchQuery.toLowerCase();
       filtered = filtered.filter((market) =>
-        market.question.toLowerCase().includes(searchQuery.toLowerCase())
+        market.question.toLowerCase().includes(q) ||
+        (market.cameraName || "").toLowerCase().includes(q) ||
+        (market.cameraLocation || "").toLowerCase().includes(q)
       );
     }
 
-    // Sort
     filtered.sort((a, b) => {
       switch (sortBy) {
         case "volume":
@@ -104,6 +104,9 @@ export default function Home() {
     0
   );
 
+  // Contar cameras unicas
+  const uniqueCameras = new Set(markets.map((m) => m.cameraId)).size;
+
   return (
     <div className="min-h-screen bg-[#0a0a0f]">
       <Header onSearch={handleSearch} />
@@ -112,13 +115,20 @@ export default function Home() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         {/* Hero Section */}
         <div className="text-center mb-12">
+          <div className="inline-flex items-center gap-2 bg-red-500/10 border border-red-500/20 rounded-full px-4 py-1.5 mb-6">
+            <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+            <span className="text-red-400 text-sm font-medium">{uniqueCameras} cameras ao vivo</span>
+          </div>
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
-            Mercado de <span className="gradient-text">Previsoes</span>
+            Assista e <span className="gradient-text">Preveja</span>
           </h1>
           <p className="text-gray-500 text-lg max-w-2xl mx-auto">
-            Aposte em eventos reais. Ganhe quando suas previsoes estiverem certas.
+            Cameras ao vivo do mundo inteiro. Assista, faca suas previsoes e ganhe quando acertar.
           </p>
         </div>
+
+        {/* Competition Banner */}
+        <CompetitionBanner />
 
         {/* Stats */}
         <StatsBar totalMarkets={markets.length} totalVolume={totalVolume} />
@@ -133,9 +143,8 @@ export default function Home() {
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
             <p className="text-gray-500">
-              <span className="text-white font-medium">{filteredMarkets.length}</span> mercados ativos
+              <span className="text-white font-medium">{filteredMarkets.length}</span> mercados ao vivo
             </p>
-            {/* Update indicator */}
             <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs ${
               isUpdating
                 ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
@@ -144,7 +153,7 @@ export default function Home() {
               <span className={`w-2 h-2 rounded-full ${
                 isUpdating ? "bg-amber-400 animate-ping" : "bg-gray-600"
               }`}></span>
-              {isUpdating ? "Atualizando..." : `${secondsAgo}s atras`}
+              {isUpdating ? "Atualizando odds..." : `${secondsAgo}s atras`}
             </div>
           </div>
           <select
@@ -161,15 +170,6 @@ export default function Home() {
 
         {/* Market List */}
         <MarketList markets={filteredMarkets} loading={loading} />
-
-        {/* Load More */}
-        {!loading && filteredMarkets.length > 0 && (
-          <div className="text-center mt-12">
-            <button className="bg-[#141419] hover:bg-[#1a1a22] text-white px-8 py-3 rounded-xl font-medium transition-all border border-[#252530] hover:border-amber-500/30">
-              Carregar Mais
-            </button>
-          </div>
-        )}
       </main>
 
       {/* Footer */}
@@ -177,19 +177,19 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex flex-col md:flex-row items-center justify-between">
             <div className="flex items-center gap-2 text-gray-500 text-sm">
-              <div className="w-6 h-6 bg-gradient-to-br from-amber-400 to-orange-600 rounded-md flex items-center justify-center">
+              <div className="w-6 h-6 bg-gradient-to-br from-red-500 to-orange-600 rounded-md flex items-center justify-center">
                 <span className="text-white font-bold text-xs">P</span>
               </div>
-              PredictHub - Simulador de apostas
+              PredictCam - Assista e Preveja
             </div>
             <div className="flex space-x-6 mt-4 md:mt-0">
               <a href="#" className="text-gray-500 hover:text-amber-400 text-sm transition-colors">
                 Sobre
               </a>
               <a href="#" className="text-gray-500 hover:text-amber-400 text-sm transition-colors">
-                API
+                Cameras
               </a>
-              <a href="#" className="text-gray-500 hover:text-amber-400 text-sm transition-colors">
+              <a href="https://github.com/felipesilva-create/polymarket-clone" className="text-gray-500 hover:text-amber-400 text-sm transition-colors">
                 GitHub
               </a>
             </div>

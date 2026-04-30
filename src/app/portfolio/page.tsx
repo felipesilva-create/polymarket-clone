@@ -4,6 +4,7 @@ import { useWallet } from "@/contexts/WalletContext";
 import { formatPrice } from "@/services/polymarket";
 import Header from "@/components/Header";
 import WalletBar from "@/components/WalletBar";
+import PositionTimer from "@/components/PositionTimer";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 
@@ -125,6 +126,7 @@ export default function PortfolioPage() {
                   <tr>
                     <th className="text-left px-5 py-3 text-gray-400 text-sm font-medium">Mercado</th>
                     <th className="text-left px-5 py-3 text-gray-400 text-sm font-medium">Posicao</th>
+                    <th className="text-center px-5 py-3 text-gray-400 text-sm font-medium">Expira</th>
                     <th className="text-right px-5 py-3 text-gray-400 text-sm font-medium">Shares</th>
                     <th className="text-right px-5 py-3 text-gray-400 text-sm font-medium">Preco Medio</th>
                     <th className="text-right px-5 py-3 text-gray-400 text-sm font-medium">Preco Atual</th>
@@ -148,13 +150,19 @@ export default function PortfolioPage() {
                         <td className="px-5 py-4">
                           <span
                             className={`px-2 py-1 rounded-lg text-xs font-medium ${
-                              position.outcome === "Yes"
+                              position.outcome === "Yes" || position.outcome === "Sim"
                                 ? "bg-emerald-500/20 text-emerald-400"
                                 : "bg-rose-500/20 text-rose-400"
                             }`}
                           >
                             {position.outcome}
                           </span>
+                        </td>
+                        <td className="px-5 py-4 text-center">
+                          <PositionTimer
+                            marketId={position.marketId}
+                            createdAt={position.createdAt}
+                          />
                         </td>
                         <td className="px-5 py-4 text-right text-white">
                           {position.shares.toFixed(2)}
